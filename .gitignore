@@ -23,3 +23,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Sample/test documents — may contain personal or sensitive data, never commit
+backend/data/sample_docs/*
+!backend/data/sample_docs/.gitkeep
