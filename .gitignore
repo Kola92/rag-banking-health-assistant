@@ -1,0 +1,25 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Environment secrets — NEVER commit these
+.env
+backend/.env
+
+# Node / Next.js (frontend, once it exists)
+node_modules/
+.next/
+out/
+
+# Editor
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
