@@ -42,3 +42,29 @@ uptime monitors actually check in production. Building this habit from
 commit #1 means the project reflects real deployment patterns, not
 tutorial patterns.
 **Date:** 2026-06-18
+
+## Chunking strategy: fixed-size with overlap, token-based
+**Why:** Industry-standard baseline for RAG. Chunking by token count (via
+tiktoken, cl100k_base encoding) rather than characters or words ensures
+predictable sizing relative to what embedding models and LLMs actually
+consume — character/word counts don't map consistently to tokens.
+Overlap (50 tokens default) ensures content split across a chunk boundary
+remains findable in at least one adjacent chunk during retrieval, rather
+than being silently lost. Alternative considered: semantic chunking
+(splitting on meaning boundaries) — rejected for now as it requires LLM
+calls just to determine chunk boundaries, adding cost/complexity before
+the core pipeline is proven. Documented as a legitimate future iteration.
+**Date:** 2026-06-19
+
+## Document type support: PDF only (initial)
+**Why:** Banking/health documents arrive as PDFs in practice — .txt and
+.docx support would add parsing code paths for formats the target domain
+doesn't actually use. Scope discipline: build PDF ingestion robustly
+(multi-page, scanned-PDF detection) rather than three formats shallowly.
+
+## Sample/test documents excluded from git
+**Why:** Test PDFs may contain personal/sensitive data (e.g. resume with
+real contact info). data/sample_docs/ folder structure is preserved via
+.gitkeep, but actual PDF contents are gitignored — prevents accidental
+permanent exposure in git history on a public portfolio repo.
+**Date:** 2026-06-19
