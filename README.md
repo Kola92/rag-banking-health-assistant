@@ -37,8 +37,8 @@ Visit:
 ## Build order
 1. ✅ Backend scaffold + FastAPI hello-world
 2. ✅ Document ingestion (PDF/text loading + chunking)
-3. ⬜ Embeddings generation
-4. ⬜ Qdrant Cloud connection + vector storage
+3. ✅ Embeddings generation
+4. ✅ Qdrant Cloud connection + vector storage
 5. ⬜ Retrieval logic
 6. ⬜ Grok API generation chain
 7. ⬜ FastAPI routes wrapping the above

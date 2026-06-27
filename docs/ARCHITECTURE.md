@@ -1,41 +1,37 @@
 # Architecture
 
-## Status: Phase 2 complete — Document ingestion (load + chunk)
+## Status: Phase 3 complete — Embeddings + Vector storage, full ingestion pipeline proven
 
 ## System overview (target state)
-User uploads a document (PDF/text) → document is chunked → chunks are
-embedded → embeddings stored in Qdrant Cloud → user asks a question →
-question is embedded → top-k similar chunks retrieved from Qdrant →
-chunks + question sent to Grok API as context → Grok generates a grounded
-answer → returned to user via FastAPI → consumed by Next.js frontend.
+User uploads a document (PDF) → document is chunked → chunks are embedded
+→ embeddings stored in Qdrant Cloud → user asks a question → question is
+embedded → top-k similar chunks retrieved from Qdrant → chunks + question
+sent to Grok API as context → Grok generates a grounded answer → returned
+via FastAPI → consumed by Next.js frontend.
 
-## Current implementation
+## Completed layers
 
 ### Phase 1 — Backend scaffold
-- FastAPI app (`backend/app/main.py`) with `GET /health` endpoint
-- Config layer (`backend/app/core/config.py`) — typed settings from `.env`
-  via pydantic-settings, required fields fail fast on missing config
-- Swagger UI auto-generated at `/docs`
+- FastAPI app with GET /health, typed config via pydantic-settings, Swagger UI
 
 ### Phase 2 — Document ingestion
-- `backend/app/services/document_loader.py` — extracts raw text from PDF
-  via pypdf. Raises `DocumentLoadError` (custom exception) on missing
-  file, non-PDF input, or scanned/image-only PDFs with no text layer.
-- `backend/app/services/chunker.py` — splits text into overlapping,
-  token-counted chunks (tiktoken, cl100k_base). Default: 500 tokens/chunk,
-  50 token overlap. Guards against invalid overlap >= chunk_size
-  (would cause infinite loop).
-- `scripts/seed_documents.py` — CLI entrypoint wiring loader + chunker,
-  prints chunk stats. Currently stops before storage (next phase).
+- document_loader.py: PDF text extraction via pypdf, custom DocumentLoadError
+- chunker.py: token-based fixed-size chunking with overlap (tiktoken, cl100k_base)
+  Default: 500 tokens/chunk, 50 token overlap
+- scripts/seed_documents.py: CLI tool for full ingestion pipeline
+
+### Phase 3 — Embeddings + Vector storage
+- embeddings.py: local sentence-transformers (all-MiniLM-L6-v2, 384 dims)
+  Singleton model load, batch encoding, numpy→list conversion at boundary
+- vector_store.py: Qdrant Cloud client wrapper
+  - ensure_collection(): idempotent collection creation (COSINE distance, 384 dims)
+  - store_chunks(): upsert points with UUID IDs, text+source in payload
+
+## Full ingestion pipeline (proven)
+load_pdf() → chunk_text() → embed_texts() → store_chunks() → Qdrant Cloud
 
 ## Not yet built
-- Embeddings generation (services/embeddings.py)
-- Qdrant connection + storage (services/vector_store.py)
-- Retrieval logic
-- Grok generation chain (services/rag_chain.py)
-- API routes wrapping ingestion + query
+- Retrieval logic (search by query embedding, return top-k chunks)
+- Grok API generation chain (rag_chain.py)
+- FastAPI routes wrapping ingestion + query
 - Next.js frontend
-
-## Why backend-first
-The API contract must exist and be proven (via Swagger UI testing) before
-any frontend code is written. See docs/DECISIONS.md for full reasoning.

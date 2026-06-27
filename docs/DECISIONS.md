@@ -68,3 +68,31 @@ real contact info). data/sample_docs/ folder structure is preserved via
 .gitkeep, but actual PDF contents are gitignored — prevents accidental
 permanent exposure in git history on a public portfolio repo.
 **Date:** 2026-06-19
+
+## Embedding model: sentence-transformers all-MiniLM-L6-v2 (local, not API)
+**Why:** $0 budget constraint — hosted embedding APIs (OpenAI, Cohere) are
+metered and would add a second paid dependency on top of Grok. Local model
+runs entirely on-machine after one-time ~90MB download, no network required
+at inference time, no rate limits, no API key. all-MiniLM-L6-v2 is the
+standard lightweight sentence-transformers model: fast, well-tested,
+384-dimension output, competitive retrieval quality for this scale.
+Tradeoff: slightly lower quality ceiling than large hosted models; acceptable
+for a portfolio project at this document scale.
+**Date:** 2026-06-19
+
+## Vector storage: text in Qdrant payload alongside vector
+**Why:** During retrieval, the LLM needs the actual chunk text, not just a
+vector ID. Storing text in payload means one Qdrant query returns both the
+similar vectors and the text needed to build the LLM prompt — no second
+lookup to a separate store. Tradeoff: payload storage increases per-point
+size in Qdrant; negligible at portfolio scale, revisit if document volume
+scales to millions of chunks.
+**Date:** 2026-06-19
+
+## Point IDs: UUID (not sequential integers)
+**Why:** UUIDs are stateless and collision-resistant — no need to track
+"last used ID" across ingestion runs or coordinate between parallel ingest
+operations. Sequential integers would require either a counter persisted
+somewhere or a database sequence, both adding state management complexity
+for no benefit at this scale.
+**Date:** 2026-06-19
