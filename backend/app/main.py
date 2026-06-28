@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from app.core.config import settings
+from app.api.v1.routes_ingest import router as ingest_router
+from app.api.v1.routes_query import router as query_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -7,8 +9,11 @@ app = FastAPI(
     debug=settings.debug,
 )
 
+app.include_router(ingest_router, prefix="/api/v1", tags=["Ingestion"])
+app.include_router(query_router, prefix="/api/v1", tags=["Query"])
 
-@app.get("/health")
+
+@app.get("/health", tags=["Health"])
 async def health_check():
     """
     Health check endpoint.

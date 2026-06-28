@@ -48,7 +48,16 @@ def ensure_collection() -> None:
                 distance=Distance.COSINE,
             ),
         )
-        print(f"Created collection: {COLLECTION_NAME}")
+        # Create a keyword index on the "source" payload field so we can
+        # filter by source filename during deletion (delete_by_source).
+        # Without this index, Qdrant refuses filter-based deletes for
+        # performance/safety reasons � it won't do unindexed full scans.
+        client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="source",
+            field_schema="keyword",
+        )
+        print(f"Created collection with payload index: {COLLECTION_NAME}")
     else:
         print(f"Collection already exists: {COLLECTION_NAME}")
 
@@ -107,3 +116,40 @@ def store_chunks(chunks: list[str], vectors: list[list[float]], source: str) -> 
     )
 
     return len(points)
+
+
+def delete_by_source(source: str) -> int:
+    """
+    Delete all points in the collection that match a given source filename.
+
+    Why this exists:
+        Re-ingesting a document without first deleting old points causes
+        duplicates — Qdrant assigns a new UUID to each point every ingest run,
+        so the same chunk accumulates multiple copies. This function makes
+        ingest idempotent: call it before store_chunks() and you always end up
+        with exactly one clean set of chunks per document, regardless of how
+        many times you re-ingest.
+
+    Args:
+        source: The filename as stored in the payload (e.g. "statement.pdf")
+
+    Returns:
+        Number of points deleted (0 if document wasn't previously ingested).
+    """
+    from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+    client = get_client()
+
+    result = client.delete(
+        collection_name=COLLECTION_NAME,
+        points_selector=Filter(
+            must=[
+                FieldCondition(
+                    key="source",
+                    match=MatchValue(value=source),
+                )
+            ]
+        ),
+    )
+
+    return result.operation_id or 0
