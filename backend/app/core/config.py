@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     qdrant_url: str
     qdrant_api_key: str
 
-    # Grok
-    grok_api_key: str
+    # Groq
+    groq_api_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
