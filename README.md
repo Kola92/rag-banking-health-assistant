@@ -1,45 +1,147 @@
 # RAG Banking & Health Document Assistant
 
-A Retrieval-Augmented Generation (RAG) system for answering questions over banking/health documents. Built as a portfolio project demonstrating production-grade backend architecture and RAG pipeline design.
+A production-grade Retrieval-Augmented Generation (RAG) system for querying
+Nigerian banking regulations and health insurance documents via natural language.
 
-## Status
-🚧 Phase 1 complete — backend scaffold + health check endpoint live.
+Built as a portfolio anchor project demonstrating senior full-stack engineering
+across Python/FastAPI backend, vector database integration, local LLM inference,
+and a polished Next.js frontend.
 
-## Stack
-- **Backend:** FastAPI (Python 3.12)
-- **Vector DB:** Qdrant Cloud (free tier)
-- **LLM:** Grok API
-- **Frontend:** Next.js (not yet built — backend-first approach)
+---
 
-## Why this exists
-Portfolio anchor project for senior fintech engineering roles. Built deliberately to gain hands-on Python/FastAPI experience and produce written technical content (see Medium: @Adekola_Olawale).
+## Live demo
 
-## Local setup (backend)
+> Run locally — see setup below. No hosted deployment yet.
+
+**Try asking:**
+- "What are the consumer protection rights of bank customers in Nigeria?"
+- "What are the data localisation requirements for Nigerian payment systems?"
+- "What actions should banks take regarding OFAC designations?"
+
+---
+
+## Architecture
+User uploads PDF → text extracted → chunked (500 tokens, 50 overlap)
+
+→ embedded (all-MiniLM-L6-v2, 384 dims) → stored in Qdrant Cloud
+User asks question → question embedded → top-k chunks retrieved by cosine similarity
+
+→ chunks + question sent to Llama 3.1 (via Groq) → grounded answer returned
+
+→ displayed in Next.js chat UI with expandable source citations
+
+### Stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| Backend | FastAPI (Python 3.12) | Async-native, auto Swagger docs, Pydantic validation |
+| Vector DB | Qdrant Cloud (free tier) | Managed, no Docker dependency, production-grade |
+| Embeddings | sentence-transformers `all-MiniLM-L6-v2` | Local, zero API cost, 384-dim, strong retrieval quality |
+| LLM | Llama 3.1 8B via Groq API | Fast inference, free tier, OpenAI-compatible API |
+| Frontend | Next.js 16 + Tailwind CSS | App Router, dark/light theme, fully responsive |
+
+---
+
+## Key engineering decisions
+
+**Why local embeddings over OpenAI/Cohere:** $0 cost, no rate limits, no
+external dependency on the critical inference path. `all-MiniLM-L6-v2`
+delivers competitive retrieval quality at this document scale.
+
+**Why fixed-size chunking with overlap:** Industry-standard RAG baseline.
+Token-based sizing (via tiktoken) ensures predictable context budget usage.
+50-token overlap prevents meaning loss at chunk boundaries.
+
+**Why Qdrant payload indexing:** Filter-based deletion (for idempotent
+re-ingestion) requires a keyword index on the `source` field — Qdrant
+refuses unindexed full-collection scans for performance reasons.
+
+**Why `api/` vs `services/` separation:** Routes stay thin (HTTP concerns only).
+Services hold domain logic and are independently testable without a running
+server. See `docs/DECISIONS.md` for the full ADR log.
+
+---
+
+## Local setup
+
+### Prerequisites
+- Python 3.12+
+- Node.js 20+
+- Qdrant Cloud account (free tier — [cloud.qdrant.io](https://cloud.qdrant.io))
+- Groq API key (free tier — [console.groq.com](https://console.groq.com))
+
+### Backend
 
 ```bash
 cd backend
 python -m venv venv
 source venv/Scripts/activate   # Windows Git Bash
+# source venv/bin/activate     # Mac/Linux
 pip install -r requirements.txt
-cp .env.example .env           # then fill in real Qdrant/Grok keys
+cp .env.example .env
+# Fill in QDRANT_URL, QDRANT_API_KEY, GROQ_API_KEY in .env
 uvicorn app.main:app --reload
 ```
 
-Visit:
-- http://127.0.0.1:8000/health — health check
-- http://127.0.0.1:8000/docs — Swagger UI (interactive API docs)
+Visit **http://localhost:8000/docs** for the interactive Swagger UI.
 
-## Documentation
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — system design, pipeline shape, current status
-- [docs/DECISIONS.md](docs/DECISIONS.md) — why each major technical choice was made
-- [docs/API.md](docs/API.md) — endpoint contracts (added as routes are built)
+### Frontend
 
-## Build order
-1. ✅ Backend scaffold + FastAPI hello-world
-2. ✅ Document ingestion (PDF/text loading + chunking)
-3. ✅ Embeddings generation
-4. ✅ Qdrant Cloud connection + vector storage
-5. ✅ Retrieval logic
-5. ✅ Grok/Groq API generation chain
-6. ✅ FastAPI routes wrapping the above
-8. ⬜ Next.js frontend
+```bash
+cd frontend
+npm install --legacy-peer-deps
+npm run dev
+```
+
+Visit **http://localhost:3000**
+
+### Seed documents (optional CLI)
+
+```bash
+cd backend
+source venv/Scripts/activate
+python ../scripts/seed_documents.py data/sample_docs/your-document.pdf
+```
+
+---
+
+## Project structure
+rag-banking-health-assistant/
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/          # Thin HTTP route handlers
+│   │   ├── services/        # Domain logic (loader, chunker, embeddings,
+│   │   │                    #   vector_store, retriever, rag_chain)
+│   │   ├── models/          # Pydantic request/response schemas
+│   │   └── core/            # Config (pydantic-settings), logging
+│   └── requirements.txt
+├── frontend/
+│   ├── app/                 # Next.js App Router pages + layout
+│   ├── components/          # ChatMessage, SourceCard, UploadPanel, ThemeToggle
+│   └── lib/                 # API client (typed fetch wrappers)
+├── scripts/
+│   └── seed_documents.py    # CLI ingestion tool
+└── docs/
+├── ARCHITECTURE.md      # System design + current status
+└── DECISIONS.md         # ADR-style decision log
+
+---
+
+## API reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Service health check |
+| `POST` | `/api/v1/ingest` | Upload PDF for ingestion (multipart/form-data) |
+| `POST` | `/api/v1/query` | Ask a question, get grounded answer + sources |
+
+Full interactive docs at `/docs` (Swagger UI).
+
+---
+
+## Author
+
+**Adekola Olawale** — Senior Full-Stack Engineer  
+[LinkedIn](https://linkedin.com/in/adekola-olawale) ·
+[Medium @Adekola_Olawale](https://medium.com/@Adekola_Olawale) ·
+[GitHub @Kola92](https://github.com/Kola92)
