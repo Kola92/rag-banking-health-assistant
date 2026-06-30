@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: rag-banking-health-backend
+    name: rag-banking-health-assistant
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -8,15 +8,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.10
-      - key: QDRANT_URL
-        sync: false
-      - key: QDRANT_API_KEY
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: APP_NAME
-        value: "RAG Banking & Health Assistant"
-      - key: APP_VERSION
-        value: "0.1.0"
-      - key: DEBUG
-        value: "false"
