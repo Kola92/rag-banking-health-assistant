@@ -6,15 +6,6 @@ from app.api.v1.routes_ingest import router as ingest_router
 from app.api.v1.routes_query import router as query_router
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Pre-warm embedding model after server binds — prevents cold start
-    # timeout on Render free tier where model load takes 30-60s
-    from app.services.embeddings import get_model
-    get_model()
-    yield
-
-
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,

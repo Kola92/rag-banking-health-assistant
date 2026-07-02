@@ -1,58 +1,49 @@
-from sentence_transformers import SentenceTransformer
+import httpx
+from app.core.config import settings
 
-# all-MiniLM-L6-v2: lightweight, fast, 384-dimension output vectors.
-# First call downloads the model (~90MB) to a local cache.
-# Every subsequent call loads from that cache — no network required.
-# 384 dimensions is the number Qdrant collection must be configured to match.
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIMENSIONS = 384
-
-_model: SentenceTransformer | None = None
-
-
-def get_model() -> SentenceTransformer:
-    """
-    Return the embedding model, loading it once and caching in memory.
-
-    Why a module-level singleton with lazy loading:
-    - Loading a sentence-transformers model takes ~1-2 seconds and allocates
-      memory. Doing it on every embed_texts() call would be a serious
-      performance problem — slow on the first request of every batch, and
-      wasteful on subsequent ones.
-    - Lazy loading (only on first call, not at import time) means the model
-      isn't loaded during tests or on startup if embeddings aren't needed yet.
-    - The module-level _model variable persists for the lifetime of the process,
-      so all subsequent calls reuse the already-loaded model.
-    """
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(MODEL_NAME)
-    return _model
+HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{MODEL_NAME}"
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     """
-    Generate embeddings for a list of text strings.
+    Generate embeddings via Hugging Face Inference API.
+
+    Why remote API instead of local model on Render:
+        sentence-transformers + PyTorch requires ~500MB RAM.
+        Render free tier provides 512MB total — the process OOMs before
+        the port binds. HF Inference API runs the same model remotely,
+        returning identical 384-dim vectors with zero local memory overhead.
+        Tradeoff: network latency per embedding call (~200-500ms) vs
+        local inference (~50ms). Acceptable for a portfolio project where
+        correctness > latency. Production fix: upgrade instance or use
+        a dedicated embedding service.
 
     Args:
-        texts: List of text strings to embed. Typically chunk_text() output.
+        texts: List of strings to embed.
 
     Returns:
-        List of embedding vectors, one per input string.
-        Each vector is a list of 384 floats (EMBEDDING_DIMENSIONS).
-
-    Why batch embedding (list input) instead of one string at a time:
-        sentence-transformers processes batches significantly faster than
-        individual strings due to GPU/CPU vectorisation. Always pass all
-        chunks together, not in a loop one by one.
+        List of 384-dimensional float vectors, one per input string.
     """
     if not texts:
         return []
 
-    model = get_model()
-    embeddings = model.encode(texts, show_progress_bar=True)
+    headers = {"Authorization": f"Bearer {settings.hf_api_key}"}
 
-    # .encode() returns a numpy ndarray — convert to plain Python list[list[float]]
-    # so the output is JSON-serialisable and Qdrant-compatible without
-    # importing numpy anywhere outside this file.
-    return embeddings.tolist()
+    with httpx.Client(timeout=30.0) as client:
+        response = client.post(
+            HF_API_URL,
+            headers=headers,
+            json={"inputs": texts, "options": {"wait_for_model": True}},
+        )
+        response.raise_for_status()
+
+    result = response.json()
+
+    # HF returns list of lists for batch input — already the right shape
+    # For single input it may return a flat list — normalize it
+    if isinstance(result[0], float):
+        return [result]
+
+    return result
