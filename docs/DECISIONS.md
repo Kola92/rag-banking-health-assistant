@@ -118,3 +118,32 @@ require either upgrading Render's plan (breaks $0 budget rule) or moving to a
 host with more RAM.
 **Date:** 2026-07-02
 **Supersedes:** "Embedding model: sentence-transformers all-MiniLM-L6-v2 (local, not API)" above
+
+## Incident: HuggingFace deprecated api-inference.huggingface.co (endpoint migration)
+**Why this happened:** The 2026-07-02 decision above (moving embeddings to
+HF's Inference API) worked correctly until HuggingFace fully retired the
+`api-inference.huggingface.co` domain and moved all traffic to
+`router.huggingface.co`. This wasn't a bug in this codebase — the old
+hostname stopped resolving entirely (`[Errno -5] No address associated with
+hostname`), confirmed via direct `curl` from a local machine, not just from
+Render. Both `/api/v1/query` (embeddings + retrieval) and `/api/v1/ingest`
+(embeddings on upload) failed identically, which confirmed the shared
+embeddings call was the single point of failure rather than a Qdrant or
+Groq issue.
+**Fix:** Updated `HF_API_URL` in `app/services/embeddings.py` from
+`https://api-inference.huggingface.co/pipeline/feature-extraction/{MODEL_NAME}`
+to
+`https://router.huggingface.co/hf-inference/models/{MODEL_NAME}/pipeline/feature-extraction`.
+Note the path structure changed, not just the domain — model name moved
+from the end of the path to the middle. Response shape from the new
+endpoint is identical to the old one, so no changes were needed to the
+existing response-normalization logic.
+**What breaks if you change it back:** Reverting to the old URL fails
+immediately and permanently — this is a retired endpoint, not a temporary
+outage, so there's no fallback value in keeping the old URL around even
+as a commented-out alternative.
+**Lesson:** A dependency on an external API's URL is a dependency on that
+provider never changing it. Worth periodically checking upstream changelogs
+for services this project calls (HF, Groq, Qdrant) rather than only
+discovering breakage when a live demo fails.
+**Date:** 2026-07-09
