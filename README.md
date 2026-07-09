@@ -11,7 +11,11 @@ and a polished Next.js frontend.
 
 ## Live demo
 
-> Run locally — see setup below. No hosted deployment yet.
+## Live demo
+
+**Frontend:** https://rag-banking-health-assistant-c8f7.vercel.app
+**Backend:** https://rag-banking-health-assistant.onrender.com
+**API docs (Swagger):** https://rag-banking-health-assistant.onrender.com/docs
 
 **Try asking:**
 - "What are the consumer protection rights of bank customers in Nigeria?"
@@ -36,7 +40,7 @@ User asks question → question embedded → top-k chunks retrieved by cosine si
 |---|---|---|
 | Backend | FastAPI (Python 3.12) | Async-native, auto Swagger docs, Pydantic validation |
 | Vector DB | Qdrant Cloud (free tier) | Managed, no Docker dependency, production-grade |
-| Embeddings | sentence-transformers `all-MiniLM-L6-v2` | Local, zero API cost, 384-dim, strong retrieval quality |
+| Embeddings | `all-MiniLM-L6-v2` via HuggingFace Inference API | Local PyTorch OOMs on Render's 512MB free tier — offloading inference to HF API removes the RAM constraint at $0 cost |
 | LLM | Llama 3.1 8B via Groq API | Fast inference, free tier, OpenAI-compatible API |
 | Frontend | Next.js 16 + Tailwind CSS | App Router, dark/light theme, fully responsive |
 

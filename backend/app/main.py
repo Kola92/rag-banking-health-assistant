@@ -17,7 +17,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://rag-banking-health-assistant.vercel.app",
-        "https://*.vercel.app",
+        "https://rag-banking-health-assistant-c8f7.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
