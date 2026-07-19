@@ -11,8 +11,6 @@ and a polished Next.js frontend.
 
 ## Live demo
 
-## Live demo
-
 **Frontend:** https://rag-banking-health-assistant-c8f7.vercel.app
 **Backend:** https://rag-banking-health-assistant.onrender.com
 **API docs (Swagger):** https://rag-banking-health-assistant.onrender.com/docs
