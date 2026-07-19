@@ -1,3 +1,7 @@
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+   ![Node](https://img.shields.io/badge/node-20+-green.svg)
+   ![Status](https://img.shields.io/badge/status-live-brightgreen.svg)
+
 # RAG Banking & Health Document Assistant
 
 A production-grade Retrieval-Augmented Generation (RAG) system for querying
